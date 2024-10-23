@@ -23,7 +23,7 @@ load_dotenv()
 API_KEY = os.getenv("CUSTOMIZED_LLM_APIKEY")
 BASE_URL = os.getenv("CUSTOMIZED_LLM_URL")
 if not API_KEY:
-    raise ValueError("environment variable is not set:DEEPSEEK_APIKEY")
+    raise ValueError("environment variable is not set:CUSTOMIZED_LLM_APIKEY")
 
 class CustomizedChat(BaseModel):
 

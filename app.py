@@ -1,5 +1,5 @@
 from fastapi import FastAPI, UploadFile, File
-from vector_initilizer import initilize_index, reload_index
+from vector_initilizer import initialize_index, reload_index
 from llm_initilizer import initilize_llm
 
 app = FastAPI()
@@ -8,7 +8,7 @@ app = FastAPI()
 initilize_llm()
 
 # 初始化向量索引
-query_engine = initilize_index()
+query_engine = initialize_index()
 
 @app.get("/")
 async def read_root():

@@ -1,33 +1,38 @@
 from llama_index.core import VectorStoreIndex, StorageContext, SimpleDirectoryReader, Document
-from llama_index.vector_stores.milvus import MilvusVectorStore
+from llama_index.vector_stores.chroma import ChromaVectorStore
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.retrievers import VectorIndexRetriever
 from llama_index.core.response_synthesizers import get_response_synthesizer
 from typing import Sequence
 from pathlib import Path
+import chromadb
+import os
+from dotenv import load_dotenv
 
 ##===============初始化Vector Storage & Vector Index============##
 
-"""
-此处需要注意dim参数:
-需要明确当前Embedding Model的输出向量维度，比如BAAI/bge-large-zh-v1.5输出的维度是1024，则向量大小是:1024*4字节=4096.
-在初始化VectorStore时指定的dim，若dim值乘以4字节后的结果与使用的Embedding Model输出的向量大小要相同,
-即：VectorStore的向量维度 与 Embedding Model的输出向量维度要一致，否则VectorStore初始化失败，报异常：
-message=vector dimension mismatch, expected vector size(byte) XX, actual 4096.
-todo: 在对接其它向量数据库时 再验证一下这个场景
-todo: 如何根据指定Embedding Model动态获取起向量维度？？
-todo: 用Server 或 Cloud代替Local file
-"""
-
-vector_store = MilvusVectorStore(uri=str(Path.home()/".milvus/data/milvus_demo.db"), dim=1024)
-storage_context = StorageContext.from_defaults(vector_store=vector_store)
+load_dotenv()
 
 # 自动为每个文档生成元数据字段
 filename_fn = lambda filename: {"file_name": filename}
 
-def initilize_index():
+def initialize_index():
     # 加载数据 todo: 用文档数据库 或 OSS 代替本地目录
-    documents = SimpleDirectoryReader("./data", file_metadata=filename_fn).load_data()
+    default_documents_dir = Path.home() / ".vivink/documents"
+    documents_dir = Path(os.getenv("LOCAL_DOCS_DIR", str(default_documents_dir)))
+
+    if not documents_dir.exists():
+        raise ValueError(f"Knowledge documents directory does not exist: {documents_dir}")
+    if not documents_dir.is_dir():
+        raise ValueError(f"Path is not a directory: {documents_dir}")
+    if not any(documents_dir.iterdir()):
+        raise ValueError(f"Directory is empty: {documents_dir}")
+    
+    documents = SimpleDirectoryReader(input_dir=str(documents_dir), 
+                                      recursive=True,
+                                      exclude_hidden=False,
+                                      file_metadata=filename_fn
+                                      ).load_data()
     return _get_query_engine(documents)
 
 def reload_index(filename,file_content, file_category=None):
@@ -45,6 +50,7 @@ def reload_index(filename,file_content, file_category=None):
 
 def _get_query_engine(documents: Sequence[Document]):
     # 初始化Vector Index
+    storage_context = StorageContext.from_defaults(vector_store=_create_vector_store())
     index = VectorStoreIndex.from_documents(documents, storage_context= storage_context)
     
     # 保存索引
@@ -66,5 +72,19 @@ def _get_query_engine(documents: Sequence[Document]):
     )
     return query_engine
 
+def _create_vector_store():
+    # in-memory or in-disk
+    store_mode = os.getenv("VECTOR_STORE_MODE")
 
+    if store_mode == "in-memory":
+       db_client = chromadb.EphemeralClient()
+    elif store_mode == "in-disk":
+       db_client = chromadb.PersistentClient(path=str(Path.home()/".vivink/vector_store"))
+    else:
+        raise ValueError(f"unknown vector store mode:{store_mode}")
 
+    data_collection = db_client.get_or_create_collection("vivink-collection")
+
+    vector_store = ChromaVectorStore(chroma_collection=data_collection)
+
+    return vector_store
