@@ -22,8 +22,8 @@ def huggingface_llm(model_name=os.getenv("HUGGINGFACE_MODEL")) -> HuggingFaceLLM
     )
 
 def ollama_llm(model_name=os.getenv("OLLAMA_MODEL")):
-    # 1. 检测本地ollama服务是否启动？是否运行模型？ todo
-    # 2. 若没有，则执行脚本，启动ollama服务，并运行指定LLM todo
+    # 1. 检测本地ollama服务是否启动？是否运行模型？ TODO
+    # 2. 若没有，则执行脚本，启动ollama服务，并运行指定LLM TODO
     print(f"The ollama model currently in use is {model_name}")
     return Ollama(model=model_name,request_timeout=360.0)
 

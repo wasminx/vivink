@@ -1,4 +1,4 @@
-from llama_index.core import VectorStoreIndex, StorageContext, SimpleDirectoryReader, Document
+from llama_index.core import VectorStoreIndex, StorageContext, Document
 from llama_index.vector_stores.chroma import ChromaVectorStore
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.retrievers import VectorIndexRetriever
@@ -8,32 +8,16 @@ from pathlib import Path
 import chromadb
 import os
 from dotenv import load_dotenv
+from docs_reader import read_docs
+
 
 ##===============初始化Vector Storage & Vector Index============##
 
 load_dotenv()
 
-# 自动为每个文档生成元数据字段
-filename_fn = lambda filename: {"file_name": filename}
-
 def initialize_index():
-    # 加载数据 todo: 用文档数据库 或 OSS 代替本地目录
-    default_documents_dir = Path.home() / ".vivink/documents"
-    documents_dir = Path(os.getenv("LOCAL_DOCS_DIR", str(default_documents_dir)))
-
-    if not documents_dir.exists():
-        raise ValueError(f"Knowledge documents directory does not exist: {documents_dir}")
-    if not documents_dir.is_dir():
-        raise ValueError(f"Path is not a directory: {documents_dir}")
-    if not any(documents_dir.iterdir()):
-        raise ValueError(f"Directory is empty: {documents_dir}")
-    
-    documents = SimpleDirectoryReader(input_dir=str(documents_dir), 
-                                      recursive=True,
-                                      exclude_hidden=False,
-                                      file_metadata=filename_fn
-                                      ).load_data()
-    return _get_query_engine(documents)
+    # 读取配置
+    return _get_query_engine(read_docs(os.getenv("","")))
 
 def reload_index(filename,file_content, file_category=None):
     # 将文件内容转换为Document对象
